@@ -1,0 +1,13 @@
+[package]
+name = "event-listener-primitives"
+description = "Low-level primitive for building Node.js-like event listeners"
+version = "0.1.0"
+authors = ["Nazar Mokrynskyi <nazar@mokrynskyi.com>"]
+edition = "2018"
+license = "0BSD"
+keywords = ["event", "listener", "emitter"]
+documentation = "https://docs.rs/event-listener-primitives"
+repository = "https://github.com/nazar-pc/event-listener-primitives"
+readme = "readme.md"
+
+[dependencies]
