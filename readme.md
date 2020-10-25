@@ -74,7 +74,7 @@ fn main() {
     drop(on_bar_handler_id);
     // This will not trigger "bar" callback since its handler ID was already dropped
     foo.do_bar();
-    // This will trigger "closed" callback though since we've detached handler OD
+    // This will trigger "closed" callback though since we've detached handler ID
     drop(foo);
 
     println!("Done");
