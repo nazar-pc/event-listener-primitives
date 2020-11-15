@@ -9,6 +9,21 @@ This crate provides a low-level primitive for building Node.js-like event listen
 
 The 2 primitives are `Bag` that is a container for event handlers and `HandlerId` that will remove event handler from the bag on drop.
 
+Trivial example:
+```rust
+use event_listener_primitives::{Bag, HandlerId};
+
+fn main() {
+    let bag = Bag::<dyn Fn() + Send>::default();
+
+    let handler_id = bag.add(Box::new(move || {
+        println!("Hello")
+    }));
+
+    bag.call_simple();
+}
+```
+
 Close to real-world usage example:
 ```rust
 use event_listener_primitives::{Bag, HandlerId};
@@ -50,6 +65,14 @@ impl Foo {
         self.inner.handlers.bar.call_simple();
     }
 
+    pub fn do_other_bar(&self) {
+        // Do things...
+
+        self.inner.handlers.bar.call(|callback| {
+            callback();
+        });
+    }
+
     pub fn on_bar<F: Fn() + Send + 'static>(&self, callback: F) -> HandlerId {
         self.inner.handlers.bar.add(Box::new(callback))
     }
@@ -73,7 +96,7 @@ fn main() {
     foo.do_bar();
     drop(on_bar_handler_id);
     // This will not trigger "bar" callback since its handler ID was already dropped
-    foo.do_bar();
+    foo.do_other_bar();
     // This will trigger "closed" callback though since we've detached handler ID
     drop(foo);
 

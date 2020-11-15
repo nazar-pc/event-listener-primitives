@@ -3,6 +3,21 @@
 //! The 2 primitives are [`Bag`] that is a container for event handlers and [`HandlerId`] that will
 //! remove event handler from the bag on drop.
 //!
+//! Trivial example:
+//! ```rust
+//! use event_listener_primitives::{Bag, HandlerId};
+//!
+//! fn main() {
+//!     let bag = Bag::<dyn Fn() + Send>::default();
+//!
+//!     let handler_id = bag.add(Box::new(move || {
+//!         println!("Hello")
+//!     }));
+//!
+//!     bag.call_simple();
+//! }
+//! ```
+//!
 //! Close to real-world usage example:
 //! ```rust
 //! use event_listener_primitives::{Bag, HandlerId};
@@ -44,6 +59,14 @@
 //!         self.inner.handlers.bar.call_simple();
 //!     }
 //!
+//!     pub fn do_other_bar(&self) {
+//!         // Do things...
+//!
+//!         self.inner.handlers.bar.call(|callback| {
+//!             callback();
+//!         });
+//!     }
+//!
 //!     pub fn on_bar<F: Fn() + Send + 'static>(&self, callback: F) -> HandlerId {
 //!         self.inner.handlers.bar.add(Box::new(callback))
 //!     }
@@ -67,7 +90,7 @@
 //!     foo.do_bar();
 //!     drop(on_bar_handler_id);
 //!     // This will not trigger "bar" callback since its handler ID was already dropped
-//!     foo.do_bar();
+//!     foo.do_other_bar();
 //!     // This will trigger "closed" callback though since we've detached handler ID
 //!     drop(foo);
 //!
@@ -140,7 +163,7 @@ impl<'lifetime, F: ?Sized + Send + 'lifetime> Default for Bag<'lifetime, F> {
 
 impl<'lifetime, F: ?Sized + Send + 'lifetime> Bag<'lifetime, F> {
     /// Add new event handler to a bag
-    pub fn add(&self, callback: Box<F>) -> HandlerId {
+    pub fn add(&self, callback: Box<F>) -> HandlerId<'lifetime> {
         let index;
 
         {
@@ -207,6 +230,25 @@ mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     #[test]
+    fn fn_trivial() {
+        let bag = Bag::<dyn Fn() + Send>::default();
+        let calls = Arc::new(AtomicUsize::new(0));
+
+        let handler_id = {
+            let calls = Arc::clone(&calls);
+            bag.add(Box::new(move || {
+                calls.fetch_add(1, Ordering::SeqCst);
+            }))
+        };
+
+        bag.call_simple();
+
+        assert_eq!(calls.load(Ordering::SeqCst), 1);
+
+        drop(handler_id);
+    }
+
+    #[test]
     fn fn_once() {
         let bag = Bag::<dyn FnOnce() + Send>::default();
         let calls = Arc::new(AtomicUsize::new(0));
@@ -269,5 +311,18 @@ mod tests {
         bag.call_simple();
 
         assert_eq!(calls.load(Ordering::SeqCst), 2);
+    }
+
+    #[test]
+    fn different_lifetimes() {
+        let bag = Bag::<dyn Fn() + Send>::default();
+
+        let _handler_id = bag.add(Box::new(move || {
+            // Nothing
+        }));
+
+        bag.call_simple();
+
+        drop(bag);
     }
 }
