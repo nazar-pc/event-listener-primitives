@@ -49,14 +49,15 @@ impl BagOnce {
             inner.handlers.insert(index, Box::new(callback));
         }
 
-        let weak_inner = Arc::downgrade(&self.inner);
-        HandlerId {
-            callback: Some(Box::new(move || {
+        HandlerId::new({
+            let weak_inner = Arc::downgrade(&self.inner);
+
+            move || {
                 if let Some(inner) = weak_inner.upgrade() {
                     inner.lock().unwrap().handlers.remove(&index);
                 }
-            })),
-        }
+            }
+        })
     }
 
     /// Call applicator with each handler and remove handlers from the bag

@@ -106,33 +106,10 @@
 //! Done
 //! ```
 
+mod handler_id;
 mod once;
 mod regular;
 
+pub use handler_id::HandlerId;
 pub use once::BagOnce;
 pub use regular::Bag;
-
-/// Handler ID keeps event handler in place, once dropped handler will be removed automatically.
-///
-/// [`HandlerId::detach()`] can be used if it is not desirable for handler to be removed
-/// automatically.
-#[must_use = "Handler will be unregistered immediately if not used"]
-pub struct HandlerId {
-    callback: Option<Box<dyn FnOnce() + Send + 'static>>,
-}
-
-impl HandlerId {
-    /// Consumes [`HandlerId`] and prevents handler from being removed automatically.
-    pub fn detach(mut self) {
-        // Remove callback such that it is not called in drop implementation
-        self.callback.take();
-    }
-}
-
-impl Drop for HandlerId {
-    fn drop(&mut self) {
-        if let Some(callback) = self.callback.take() {
-            callback();
-        }
-    }
-}
