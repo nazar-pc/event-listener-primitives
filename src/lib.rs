@@ -11,9 +11,9 @@
 //! fn main() {
 //!     let bag = Bag::default();
 //!
-//!     let handler_id = bag.add(move || {
+//!     let handler_id = bag.add(Box::new(move || {
 //!         println!("Hello")
-//!     });
+//!     }));
 //!
 //!     bag.call_simple();
 //! }
@@ -26,8 +26,8 @@
 //!
 //! #[derive(Default)]
 //! struct Handlers {
-//!     bar: Bag,
-//!     closed: BagOnce,
+//!     bar: Bag<Box<dyn Fn() + Send + Sync + 'static>>,
+//!     closed: BagOnce<Box<dyn FnOnce() + Send + Sync + 'static>>,
 //! }
 //!
 //! struct Inner {
@@ -69,11 +69,11 @@
 //!     }
 //!
 //!     pub fn on_bar<F: Fn() + Send + Sync + 'static>(&self, callback: F) -> HandlerId {
-//!         self.inner.handlers.bar.add(callback)
+//!         self.inner.handlers.bar.add(Box::new(callback))
 //!     }
 //!
 //!     pub fn on_closed<F: FnOnce() + Send + Sync + 'static>(&self, callback: F) -> HandlerId {
-//!         self.inner.handlers.closed.add(callback)
+//!         self.inner.handlers.closed.add(Box::new(callback))
 //!     }
 //! }
 //!

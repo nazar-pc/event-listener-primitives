@@ -26,62 +26,59 @@ fn main() {
 
 Close to real-world usage example:
 ```rust
+use event_listener_primitives::{Bag, HandlerId};
+fn main() {
+    let bag = Bag::default();
+    let handler_id = bag.add(Box::new(move || {
+        println!("Hello")
+    }));
+    bag.call_simple();
+}
+```
+Close to real-world usage example:
+```rust
 use event_listener_primitives::{Bag, BagOnce, HandlerId};
 use std::sync::Arc;
-
 #[derive(Default)]
 struct Handlers {
-    bar: Bag,
-    closed: BagOnce,
+    bar: Bag<Box<dyn Fn() + Send + Sync + 'static>>,
+    closed: BagOnce<Box<dyn FnOnce() + Send + Sync + 'static>>,
 }
-
 struct Inner {
     handlers: Arc<Handlers>,
 }
-
 impl Drop for Inner {
     fn drop(&mut self) {
         self.handlers.closed.call_simple();
     }
 }
-
 #[derive(Clone)]
 pub struct Foo {
     inner: Arc<Inner>,
 }
-
 impl Foo {
     pub fn new() -> Self {
         let handlers = Arc::<Handlers>::default();
-
         let inner = Arc::new(Inner { handlers });
-
         Self { inner }
     }
-
     pub fn do_bar(&self) {
         // Do things...
-
         self.inner.handlers.bar.call_simple();
     }
-
     pub fn do_other_bar(&self) {
         // Do things...
-
         self.inner.handlers.bar.call(|callback| {
             callback();
         });
     }
-
     pub fn on_bar<F: Fn() + Send + Sync + 'static>(&self, callback: F) -> HandlerId {
-        self.inner.handlers.bar.add(callback)
+        self.inner.handlers.bar.add(Box::new(callback))
     }
-
     pub fn on_closed<F: FnOnce() + Send + Sync + 'static>(&self, callback: F) -> HandlerId {
-        self.inner.handlers.closed.add(callback)
+        self.inner.handlers.closed.add(Box::new(callback))
     }
 }
-
 fn main() {
     let foo = Foo::new();
     let on_bar_handler_id = foo.on_bar(|| {
@@ -99,7 +96,6 @@ fn main() {
     foo.do_other_bar();
     // This will trigger "closed" callback though since we've detached handler ID
     drop(foo);
-
     println!("Done");
 }
 ```

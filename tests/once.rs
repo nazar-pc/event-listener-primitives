@@ -6,21 +6,21 @@ mod once {
 
     #[test]
     fn once() {
-        let bag = BagOnce::default();
+        let bag = BagOnce::<Box<dyn FnOnce() + Send + Sync + 'static>>::default();
         let calls = Arc::new(AtomicUsize::new(0));
 
         {
             let calls = Arc::clone(&calls);
-            bag.add(move || {
+            bag.add(Box::new(move || {
                 calls.fetch_add(1, Ordering::SeqCst);
-            })
+            }))
             .detach();
         }
         {
             let calls = Arc::clone(&calls);
-            drop(bag.add(move || {
+            drop(bag.add(Box::new(move || {
                 calls.fetch_add(1, Ordering::SeqCst);
-            }));
+            })));
         }
         bag.call(|callback| {
             callback();
@@ -30,9 +30,9 @@ mod once {
 
         {
             let calls = Arc::clone(&calls);
-            bag.add(move || {
+            bag.add(Box::new(move || {
                 calls.fetch_add(1, Ordering::SeqCst);
-            })
+            }))
             .detach();
         }
         bag.call_simple();

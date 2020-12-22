@@ -4,17 +4,17 @@ use std::collections::HashMap;
 use std::mem;
 use std::sync::Arc;
 
-struct Inner {
-    handlers: HashMap<usize, Box<dyn FnOnce() + Send + 'static>>,
+struct Inner<F: FnOnce() + Send + 'static> {
+    handlers: HashMap<usize, F>,
     next_index: usize,
 }
 
 /// Data structure that holds `FnOnce()` event handlers
-pub struct BagOnce {
-    inner: Arc<Mutex<Inner>>,
+pub struct BagOnce<F: FnOnce() + Send + 'static> {
+    inner: Arc<Mutex<Inner<F>>>,
 }
 
-impl Clone for BagOnce {
+impl<F: FnOnce() + Send + 'static> Clone for BagOnce<F> {
     fn clone(&self) -> Self {
         Self {
             inner: Arc::clone(&self.inner),
@@ -22,7 +22,7 @@ impl Clone for BagOnce {
     }
 }
 
-impl Default for BagOnce {
+impl<F: FnOnce() + Send + 'static> Default for BagOnce<F> {
     fn default() -> Self {
         Self {
             inner: Arc::new(Mutex::new(Inner {
@@ -33,12 +33,9 @@ impl Default for BagOnce {
     }
 }
 
-impl BagOnce {
+impl<F: FnOnce() + Send + 'static> BagOnce<F> {
     /// Add new event handler to a bag
-    pub fn add<F>(&self, callback: F) -> HandlerId
-    where
-        F: FnOnce() + Send + 'static,
-    {
+    pub fn add(&self, callback: F) -> HandlerId {
         let index;
 
         {
@@ -47,7 +44,7 @@ impl BagOnce {
             index = inner.next_index;
             inner.next_index += 1;
 
-            inner.handlers.insert(index, Box::new(callback));
+            inner.handlers.insert(index, callback);
         }
 
         HandlerId::new({
@@ -64,7 +61,7 @@ impl BagOnce {
     /// Call applicator with each handler and remove handlers from the bag
     pub fn call<A>(&self, applicator: A)
     where
-        A: Fn(Box<dyn FnOnce() + Send + 'static>),
+        A: Fn(F),
     {
         // We collect handlers first in order to avoid holding lock while calling handlers
         let handlers = mem::take(&mut self.inner.lock().handlers);

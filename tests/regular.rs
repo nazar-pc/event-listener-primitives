@@ -26,21 +26,21 @@ mod regular {
 
     #[test]
     fn regular() {
-        let bag = Bag::default();
+        let bag = Bag::<Box<dyn Fn() + Send + Sync + 'static>>::default();
         let calls = Arc::new(AtomicUsize::new(0));
 
         {
             let calls = Arc::clone(&calls);
-            bag.add(move || {
+            bag.add(Box::new(move || {
                 calls.fetch_add(1, Ordering::SeqCst);
-            })
+            }))
             .detach();
         }
         {
             let calls = Arc::clone(&calls);
-            drop(bag.add(move || {
+            drop(bag.add(Box::new(move || {
                 calls.fetch_add(1, Ordering::SeqCst);
-            }))
+            })))
         }
         bag.call(|callback| {
             callback();

@@ -4,19 +4,17 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tinyvec::TinyVec;
 
-type WrappedHandler = Arc<Box<dyn Fn() + Send + Sync + 'static>>;
-
-struct Inner {
-    handlers: HashMap<usize, WrappedHandler>,
+struct Inner<F: Fn() + Send + Sync + 'static> {
+    handlers: HashMap<usize, Arc<Box<F>>>,
     next_index: usize,
 }
 
 /// Data structure that holds `Fn()` event handlers
-pub struct Bag {
-    inner: Arc<Mutex<Inner>>,
+pub struct Bag<F: Fn() + Send + Sync + 'static> {
+    inner: Arc<Mutex<Inner<F>>>,
 }
 
-impl Clone for Bag {
+impl<F: Fn() + Send + Sync + 'static> Clone for Bag<F> {
     fn clone(&self) -> Self {
         Self {
             inner: Arc::clone(&self.inner),
@@ -24,7 +22,7 @@ impl Clone for Bag {
     }
 }
 
-impl Default for Bag {
+impl<F: Fn() + Send + Sync + 'static> Default for Bag<F> {
     fn default() -> Self {
         Self {
             inner: Arc::new(Mutex::new(Inner {
@@ -35,17 +33,14 @@ impl Default for Bag {
     }
 }
 
-impl Bag {
+impl<F: Fn() + Send + Sync + 'static> Bag<F> {
     /// Add new event handler to a bag
-    pub fn add<F>(&self, callback: F) -> HandlerId
-    where
-        F: Fn() + Send + Sync + 'static,
-    {
+    pub fn add(&self, callback: F) -> HandlerId {
         self.add_boxed_arc(Arc::new(Box::new(callback)))
     }
 
     /// Add new event handler to a bag that is already `Arc<Box<Fn()>>`
-    pub fn add_boxed_arc(&self, callback: WrappedHandler) -> HandlerId {
+    pub fn add_boxed_arc(&self, callback: Arc<Box<F>>) -> HandlerId {
         let index;
 
         {
@@ -71,7 +66,7 @@ impl Bag {
     /// Call applicator with each handler and keep handlers in the bag
     pub fn call<A>(&self, applicator: A)
     where
-        A: Fn(&Box<dyn Fn() + Send + Sync + 'static>),
+        A: Fn(&Box<F>),
     {
         // We collect handlers first in order to avoid holding lock while calling handlers
         let handlers = self
@@ -80,7 +75,7 @@ impl Bag {
             .handlers
             .values()
             .map(|handler| Some(Arc::clone(handler)))
-            .collect::<TinyVec<[Option<WrappedHandler>; 10]>>();
+            .collect::<TinyVec<[Option<Arc<Box<F>>>; 10]>>();
         for handler in handlers.iter() {
             applicator(handler.as_ref().unwrap());
         }
