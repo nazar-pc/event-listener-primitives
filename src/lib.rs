@@ -135,20 +135,28 @@ impl<'lifetime> Drop for HandlerId<'lifetime> {
     }
 }
 
-struct Inner<'lifetime, F: ?Sized + Send + 'lifetime> {
-    handlers: HashMap<usize, Box<F>>,
+struct Inner<'lifetime, F> {
+    handlers: HashMap<usize, F>,
     next_index: usize,
     _lifetime: PhantomData<&'lifetime ()>,
 }
 
 /// Data structure that holds event handlers
-#[derive(Clone)]
-pub struct Bag<'lifetime, F: ?Sized + Send + 'lifetime> {
-    inner: Arc<Mutex<Inner<'lifetime, F>>>,
+pub struct Bag<'lifetime, F: FnOnce() + ?Sized + Send + 'lifetime> {
+    inner: Arc<Mutex<Inner<'lifetime, Box<F>>>>,
     _lifetime: PhantomData<&'lifetime ()>,
 }
 
-impl<'lifetime, F: ?Sized + Send + 'lifetime> Default for Bag<'lifetime, F> {
+impl<'lifetime, F: FnOnce() + ?Sized + Send + 'lifetime> Clone for Bag<'lifetime, F> {
+    fn clone(&self) -> Self {
+        Self {
+            inner: Arc::clone(&self.inner),
+            _lifetime: PhantomData::default(),
+        }
+    }
+}
+
+impl<'lifetime, F: FnOnce() + ?Sized + Send + 'lifetime> Default for Bag<'lifetime, F> {
     fn default() -> Self {
         Self {
             inner: Arc::new(Mutex::new(Inner {
@@ -161,7 +169,7 @@ impl<'lifetime, F: ?Sized + Send + 'lifetime> Default for Bag<'lifetime, F> {
     }
 }
 
-impl<'lifetime, F: ?Sized + Send + 'lifetime> Bag<'lifetime, F> {
+impl<'lifetime, F: FnOnce() + ?Sized + Send + 'lifetime> Bag<'lifetime, F> {
     /// Add new event handler to a bag
     pub fn add(&self, callback: Box<F>) -> HandlerId<'lifetime> {
         let index;
