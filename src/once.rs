@@ -4,17 +4,17 @@ use std::collections::HashMap;
 use std::mem;
 use std::sync::Arc;
 
-struct Inner<F: FnOnce() + Send + 'static> {
+struct Inner<F: Send + 'static> {
     handlers: HashMap<usize, F>,
     next_index: usize,
 }
 
 /// Data structure that holds `FnOnce()` event handlers
-pub struct BagOnce<F: FnOnce() + Send + 'static> {
+pub struct BagOnce<F: Send + 'static> {
     inner: Arc<Mutex<Inner<F>>>,
 }
 
-impl<F: FnOnce() + Send + 'static> Clone for BagOnce<F> {
+impl<F: Send + 'static> Clone for BagOnce<F> {
     fn clone(&self) -> Self {
         Self {
             inner: Arc::clone(&self.inner),
@@ -22,7 +22,7 @@ impl<F: FnOnce() + Send + 'static> Clone for BagOnce<F> {
     }
 }
 
-impl<F: FnOnce() + Send + 'static> Default for BagOnce<F> {
+impl<F: Send + 'static> Default for BagOnce<F> {
     fn default() -> Self {
         Self {
             inner: Arc::new(Mutex::new(Inner {
@@ -33,7 +33,7 @@ impl<F: FnOnce() + Send + 'static> Default for BagOnce<F> {
     }
 }
 
-impl<F: FnOnce() + Send + 'static> BagOnce<F> {
+impl<F: Send + 'static> BagOnce<F> {
     /// Add new event handler to a bag
     pub fn add(&self, callback: F) -> HandlerId {
         let index;
@@ -69,7 +69,9 @@ impl<F: FnOnce() + Send + 'static> BagOnce<F> {
             applicator(handler);
         }
     }
+}
 
+impl<F: FnOnce() + Send + 'static> BagOnce<F> {
     /// Call each handler without arguments and remove handlers from the bag
     pub fn call_simple(&self) {
         self.call(|handler| handler())

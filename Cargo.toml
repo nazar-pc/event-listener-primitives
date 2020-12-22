@@ -1,7 +1,7 @@
 [package]
 name = "event-listener-primitives"
 description = "Low-level primitive for building Node.js-like event listeners"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["Nazar Mokrynskyi <nazar@mokrynskyi.com>"]
 edition = "2018"
 license = "0BSD"

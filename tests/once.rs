@@ -59,4 +59,25 @@ mod once {
 
         bag.call_simple();
     }
+
+    #[test]
+    fn with_arguments() {
+        let bag = BagOnce::default();
+        let calls = Arc::new(AtomicUsize::new(0));
+
+        let handler_id = {
+            let calls = Arc::clone(&calls);
+            bag.add(move |_p| {
+                calls.fetch_add(1, Ordering::SeqCst);
+            })
+        };
+
+        bag.call(|handler| {
+            handler(1);
+        });
+
+        assert_eq!(calls.load(Ordering::SeqCst), 1);
+
+        drop(handler_id);
+    }
 }
