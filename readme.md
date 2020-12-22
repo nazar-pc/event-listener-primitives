@@ -7,18 +7,18 @@
 
 This crate provides a low-level primitive for building Node.js-like event listeners.
 
-The 2 primitives are `Bag` that is a container for event handlers and `HandlerId` that will remove event handler from the bag on drop.
+The 3 primitives are [`Bag`] that is a container for `Fn()` event handlers, [`BagOnce`] the same for `FnOnce()` event handlers and [`HandlerId`] that will remove event handler from the bag on drop.
 
 Trivial example:
 ```rust
 use event_listener_primitives::{Bag, HandlerId};
 
 fn main() {
-    let bag = Bag::<dyn Fn() + Send>::default();
+    let bag = Bag::default();
 
-    let handler_id = bag.add(Box::new(move || {
+    let handler_id = bag.add(move || {
         println!("Hello")
-    }));
+    });
 
     bag.call_simple();
 }
@@ -26,13 +26,13 @@ fn main() {
 
 Close to real-world usage example:
 ```rust
-use event_listener_primitives::{Bag, HandlerId};
+use event_listener_primitives::{Bag, BagOnce, HandlerId};
 use std::sync::Arc;
 
 #[derive(Default)]
 struct Handlers {
-    bar: Bag<'static, dyn Fn() + Send>,
-    closed: Bag<'static, dyn FnOnce() + Send>,
+    bar: Bag,
+    closed: BagOnce,
 }
 
 struct Inner {
@@ -41,7 +41,7 @@ struct Inner {
 
 impl Drop for Inner {
     fn drop(&mut self) {
-        self.handlers.closed.call_once_simple();
+        self.handlers.closed.call_simple();
     }
 }
 
@@ -73,12 +73,12 @@ impl Foo {
         });
     }
 
-    pub fn on_bar<F: Fn() + Send + 'static>(&self, callback: F) -> HandlerId {
-        self.inner.handlers.bar.add(Box::new(callback))
+    pub fn on_bar<F: Fn() + Send + Sync + 'static>(&self, callback: F) -> HandlerId {
+        self.inner.handlers.bar.add(callback)
     }
 
-    pub fn on_closed<F: FnOnce() + Send + 'static>(&self, callback: F) -> HandlerId {
-        self.inner.handlers.closed.add(Box::new(callback))
+    pub fn on_closed<F: FnOnce() + Send + Sync + 'static>(&self, callback: F) -> HandlerId {
+        self.inner.handlers.closed.add(callback)
     }
 }
 
