@@ -1,9 +1,12 @@
 use crate::HandlerId;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use tinyvec::TinyVec;
+
+type WrappedHandler = Arc<Box<dyn Fn() + Send + Sync + 'static>>;
 
 struct Inner {
-    handlers: HashMap<usize, Arc<Box<dyn Fn() + Send + Sync + 'static>>>,
+    handlers: HashMap<usize, WrappedHandler>,
     next_index: usize,
 }
 
@@ -41,7 +44,7 @@ impl Bag {
     }
 
     /// Add new event handler to a bag that is already `Arc<Box<Fn()>>`
-    pub fn add_boxed_arc(&self, callback: Arc<Box<dyn Fn() + Send + Sync + 'static>>) -> HandlerId {
+    pub fn add_boxed_arc(&self, callback: WrappedHandler) -> HandlerId {
         let index;
 
         {
@@ -69,21 +72,22 @@ impl Bag {
     where
         A: Fn(&Box<dyn Fn() + Send + Sync + 'static>),
     {
+        // We collect handlers first in order to avoid holding lock while calling handlers
         let handlers = self
             .inner
             .lock()
             .unwrap()
             .handlers
             .values()
-            .cloned()
-            .collect::<Vec<_>>();
-        for callback in handlers {
-            applicator(&callback);
+            .map(|handler| Some(Arc::clone(handler)))
+            .collect::<TinyVec<[Option<WrappedHandler>; 10]>>();
+        for handler in handlers.iter() {
+            applicator(handler.as_ref().unwrap());
         }
     }
 
     /// Call each handler without arguments and keep handlers in the bag
     pub fn call_simple(&self) {
-        self.call(|callback| callback())
+        self.call(|handler| handler())
     }
 }

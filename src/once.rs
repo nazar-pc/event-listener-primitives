@@ -65,14 +65,15 @@ impl BagOnce {
     where
         A: Fn(Box<dyn FnOnce() + Send + 'static>),
     {
+        // We collect handlers first in order to avoid holding lock while calling handlers
         let handlers = mem::take(&mut self.inner.lock().unwrap().handlers);
-        for (_, callback) in handlers.into_iter() {
-            applicator(callback);
+        for (_, handler) in handlers.into_iter() {
+            applicator(handler);
         }
     }
 
     /// Call each handler without arguments and remove handlers from the bag
     pub fn call_simple(&self) {
-        self.call(|callback| callback())
+        self.call(|handler| handler())
     }
 }
