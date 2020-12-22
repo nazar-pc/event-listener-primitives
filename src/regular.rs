@@ -1,6 +1,7 @@
 use crate::HandlerId;
+use parking_lot::Mutex;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use tinyvec::TinyVec;
 
 type WrappedHandler = Arc<Box<dyn Fn() + Send + Sync + 'static>>;
@@ -48,7 +49,7 @@ impl Bag {
         let index;
 
         {
-            let mut inner = self.inner.lock().unwrap();
+            let mut inner = self.inner.lock();
 
             index = inner.next_index;
             inner.next_index += 1;
@@ -61,7 +62,7 @@ impl Bag {
 
             move || {
                 if let Some(inner) = weak_inner.upgrade() {
-                    inner.lock().unwrap().handlers.remove(&index);
+                    inner.lock().handlers.remove(&index);
                 }
             }
         })
@@ -76,7 +77,6 @@ impl Bag {
         let handlers = self
             .inner
             .lock()
-            .unwrap()
             .handlers
             .values()
             .map(|handler| Some(Arc::clone(handler)))

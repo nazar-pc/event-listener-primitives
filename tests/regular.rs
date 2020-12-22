@@ -1,7 +1,8 @@
 mod regular {
     use event_listener_primitives::Bag;
+    use parking_lot::Mutex;
     use std::sync::atomic::{AtomicUsize, Ordering};
-    use std::sync::{Arc, Mutex};
+    use std::sync::Arc;
     use std::thread;
 
     #[test]
@@ -63,8 +64,8 @@ mod regular {
             let rx2 = Mutex::new(Some(rx2));
 
             move || {
-                let _ = tx1.lock().unwrap().take().unwrap().send(());
-                let _ = rx2.lock().unwrap().take().unwrap().recv();
+                let _ = tx1.lock().take().unwrap().send(());
+                let _ = rx2.lock().take().unwrap().recv();
             }
         });
 

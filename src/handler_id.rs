@@ -1,4 +1,5 @@
-use std::sync::{Arc, Mutex};
+use parking_lot::Mutex;
+use std::sync::Arc;
 
 struct Inner {
     callback: Option<Box<dyn FnOnce() + Send + 'static>>,
@@ -37,6 +38,6 @@ impl HandlerId {
     /// Consumes [`HandlerId`] and prevents handler from being removed automatically.
     pub fn detach(&self) {
         // Remove callback such that it is not called in drop implementation
-        self.inner.lock().unwrap().callback.take();
+        self.inner.lock().callback.take();
     }
 }

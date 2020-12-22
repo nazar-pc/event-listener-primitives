@@ -1,7 +1,8 @@
 use crate::HandlerId;
+use parking_lot::Mutex;
 use std::collections::HashMap;
 use std::mem;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 struct Inner {
     handlers: HashMap<usize, Box<dyn FnOnce() + Send + 'static>>,
@@ -41,7 +42,7 @@ impl BagOnce {
         let index;
 
         {
-            let mut inner = self.inner.lock().unwrap();
+            let mut inner = self.inner.lock();
 
             index = inner.next_index;
             inner.next_index += 1;
@@ -54,7 +55,7 @@ impl BagOnce {
 
             move || {
                 if let Some(inner) = weak_inner.upgrade() {
-                    inner.lock().unwrap().handlers.remove(&index);
+                    inner.lock().handlers.remove(&index);
                 }
             }
         })
@@ -66,7 +67,7 @@ impl BagOnce {
         A: Fn(Box<dyn FnOnce() + Send + 'static>),
     {
         // We collect handlers first in order to avoid holding lock while calling handlers
-        let handlers = mem::take(&mut self.inner.lock().unwrap().handlers);
+        let handlers = mem::take(&mut self.inner.lock().handlers);
         for (_, handler) in handlers.into_iter() {
             applicator(handler);
         }
