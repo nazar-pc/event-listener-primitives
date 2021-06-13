@@ -1,8 +1,8 @@
 use crate::HandlerId;
 use parking_lot::Mutex;
+use smallvec::SmallVec;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tinyvec::TinyVec;
 
 struct Inner<F: Send + Sync + 'static> {
     handlers: HashMap<usize, Arc<Box<F>>>,
@@ -74,10 +74,10 @@ impl<F: Send + Sync + 'static> Bag<F> {
             .lock()
             .handlers
             .values()
-            .map(|handler| Some(Arc::clone(handler)))
-            .collect::<TinyVec<[Option<Arc<Box<F>>>; 10]>>();
+            .cloned()
+            .collect::<SmallVec<[Arc<Box<F>>; 2]>>();
         for handler in handlers.iter() {
-            applicator(handler.as_ref().unwrap());
+            applicator(handler);
         }
     }
 }
