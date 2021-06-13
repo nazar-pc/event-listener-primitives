@@ -1,8 +1,8 @@
 use crate::HandlerId;
 use parking_lot::Mutex;
 use std::collections::HashMap;
-use std::mem;
 use std::sync::Arc;
+use std::{fmt, mem};
 
 struct Inner<F: Send + 'static> {
     handlers: HashMap<usize, F>,
@@ -12,6 +12,12 @@ struct Inner<F: Send + 'static> {
 /// Data structure that holds `FnOnce()` event handlers
 pub struct BagOnce<F: Send + 'static> {
     inner: Arc<Mutex<Inner<F>>>,
+}
+
+impl<F: Send + Sync + 'static> fmt::Debug for BagOnce<F> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("BagOnce").finish()
+    }
 }
 
 impl<F: Send + 'static> Clone for BagOnce<F> {
@@ -65,7 +71,7 @@ impl<F: Send + 'static> BagOnce<F> {
     {
         // We collect handlers first in order to avoid holding lock while calling handlers
         let handlers = mem::take(&mut self.inner.lock().handlers);
-        for (_, handler) in handlers.into_iter() {
+        for (_, handler) in handlers {
             applicator(handler);
         }
     }

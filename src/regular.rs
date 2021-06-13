@@ -2,6 +2,7 @@ use crate::HandlerId;
 use parking_lot::Mutex;
 use smallvec::SmallVec;
 use std::collections::HashMap;
+use std::fmt;
 use std::sync::Arc;
 
 struct Inner<F: Send + Sync + 'static> {
@@ -12,6 +13,12 @@ struct Inner<F: Send + Sync + 'static> {
 /// Data structure that holds `Fn()` event handlers
 pub struct Bag<F: Send + Sync + 'static> {
     inner: Arc<Mutex<Inner<F>>>,
+}
+
+impl<F: Send + Sync + 'static> fmt::Debug for Bag<F> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Bag").finish()
+    }
 }
 
 impl<F: Send + Sync + 'static> Clone for Bag<F> {

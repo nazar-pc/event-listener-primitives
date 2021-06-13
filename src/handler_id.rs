@@ -1,4 +1,5 @@
 use parking_lot::Mutex;
+use std::fmt;
 use std::sync::Arc;
 
 struct Inner {
@@ -21,6 +22,12 @@ impl Drop for Inner {
 #[derive(Clone)]
 pub struct HandlerId {
     inner: Arc<Mutex<Inner>>,
+}
+
+impl fmt::Debug for HandlerId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("HandlerId").finish()
+    }
 }
 
 impl HandlerId {

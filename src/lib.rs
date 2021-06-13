@@ -1,3 +1,4 @@
+#![warn(rust_2018_idioms, missing_debug_implementations, missing_docs)]
 //! This crate provides a low-level primitive for building Node.js-like event listeners.
 //!
 //! The 3 primitives are [`Bag`] that is a container for `Fn()` event handlers, [`BagOnce`] the same
