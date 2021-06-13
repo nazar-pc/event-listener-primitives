@@ -7,7 +7,7 @@
 
 This crate provides a low-level primitive for building Node.js-like event listeners.
 
-The 3 primitives are [`Bag`] that is a container for `Fn()` event handlers, [`BagOnce`] the same for `FnOnce()` event handlers and [`HandlerId`] that will remove event handler from the bag on drop.
+The 3 primitives are `Bag` that is a container for `Fn()` event handlers, `BagOnce` the same for `FnOnce()` event handlers and `HandlerId` that will remove event handler from the bag on drop.
 
 Trivial example:
 ```rust
@@ -25,80 +25,73 @@ fn main() {
 ```
 
 Close to real-world usage example:
+
 ```rust
 use event_listener_primitives::{Bag, BagOnce, HandlerId};
-use std::sync::Arc;
 
 #[derive(Default)]
 struct Handlers {
-    bar: Bag<Box<dyn Fn() + Send + Sync + 'static>>,
+    action: Bag<Box<dyn Fn() + Send + Sync + 'static>>,
     closed: BagOnce<Box<dyn FnOnce() + Send + Sync + 'static>>,
 }
 
-struct Inner {
-    handlers: Arc<Handlers>,
+pub struct Container {
+    handlers: Handlers,
 }
 
-impl Drop for Inner {
+impl Drop for Container {
     fn drop(&mut self) {
         self.handlers.closed.call_simple();
     }
 }
 
-#[derive(Clone)]
-pub struct Foo {
-    inner: Arc<Inner>,
-}
-
-impl Foo {
+impl Container {
     pub fn new() -> Self {
-        let handlers = Arc::<Handlers>::default();
-        
-        let inner = Arc::new(Inner { handlers });
-        
-        Self { inner }
+        let handlers = Handlers::default();
+
+        Self { handlers }
     }
 
-    pub fn do_bar(&self) {
+    pub fn do_action(&self) {
         // Do things...
-        
-        self.inner.handlers.bar.call_simple();
+
+        self.handlers.action.call_simple();
     }
 
-    pub fn do_other_bar(&self) {
+    pub fn do_other_action(&self) {
         // Do things...
-        
-        self.inner.handlers.bar.call(|callback| {
+
+        self.handlers.action.call(|callback| {
             callback();
         });
     }
 
-    pub fn on_bar<F: Fn() + Send + Sync + 'static>(&self, callback: F) -> HandlerId {
-        self.inner.handlers.bar.add(Box::new(callback))
+    pub fn on_action<F: Fn() + Send + Sync + 'static>(&self, callback: F) -> HandlerId {
+        self.handlers.action.add(Box::new(callback))
     }
 
     pub fn on_closed<F: FnOnce() + Send + Sync + 'static>(&self, callback: F) -> HandlerId {
-        self.inner.handlers.closed.add(Box::new(callback))
+        self.handlers.closed.add(Box::new(callback))
     }
 }
 
 fn main() {
-    let foo = Foo::new();
-    let on_bar_handler_id = foo.on_bar(|| {
-        println!("On bar");
+    let container = Container::new();
+    let on_action_handler_id = container.on_action(|| {
+        println!("On action");
     });
-    foo
+    container
         .on_closed(|| {
-            println!("On closed");
+            println!("On container closed");
         })
         .detach();
-    // This will trigger "bar" callback just fine since its handler ID is not dropped yet
-    foo.do_bar();
-    drop(on_bar_handler_id);
-    // This will not trigger "bar" callback since its handler ID was already dropped
-    foo.do_other_bar();
+    // This will trigger "action" callback just fine since its handler ID is not dropped yet
+    container.do_action();
+    drop(on_action_handler_id);
+    // This will not trigger "action" callback since its handler ID was already dropped
+    container.do_other_action();
     // This will trigger "closed" callback though since we've detached handler ID
-    drop(foo);
+    drop(container);
 
     println!("Done");
 }
@@ -106,7 +99,7 @@ fn main() {
 
 The output will be:
 ```text
-On bar
+On action
 On closed
 Done
 ```
