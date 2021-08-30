@@ -12,13 +12,14 @@ The 3 primitives are `Bag` that is a container for `Fn()` event handlers, `BagOn
 Trivial example:
 ```rust
 use event_listener_primitives::{Bag, HandlerId};
+use std::sync::Arc;
 
 fn main() {
     let bag = Bag::default();
 
-    let handler_id = bag.add(move || {
-        println!("Hello")
-    });
+    let handler_id = bag.add(Arc::new(|| {
+        println!("Hello");
+    }));
 
     bag.call_simple();
 }
@@ -28,11 +29,12 @@ Close to real-world usage example:
 
 ```rust
 use event_listener_primitives::{Bag, BagOnce, HandlerId};
+use std::sync::Arc;
 
 #[derive(Default)]
 struct Handlers {
-    action: Bag<Box<dyn Fn() + Send + Sync + 'static>>,
-    closed: BagOnce<Box<dyn FnOnce() + Send + Sync + 'static>>,
+    action: Bag<Arc<dyn Fn() + Send + Sync + 'static>>,
+    closed: BagOnce<Box<dyn FnOnce() + Send + 'static>>,
 }
 
 pub struct Container {
@@ -67,10 +69,10 @@ impl Container {
     }
 
     pub fn on_action<F: Fn() + Send + Sync + 'static>(&self, callback: F) -> HandlerId {
-        self.handlers.action.add(Box::new(callback))
+        self.handlers.action.add(Arc::new(callback))
     }
 
-    pub fn on_closed<F: FnOnce() + Send + Sync + 'static>(&self, callback: F) -> HandlerId {
+    pub fn on_closed<F: FnOnce() + Send + 'static>(&self, callback: F) -> HandlerId {
         self.handlers.closed.add(Box::new(callback))
     }
 }
@@ -110,6 +112,6 @@ Feel free to create issues and send pull requests, they are highly appreciated!
 ## License
 Zero-Clause BSD
 
-https://opensource.org/licenses/0BSD
+<https://opensource.org/licenses/0BSD>
 
-https://tldrlegal.com/license/bsd-0-clause-license
+<https://tldrlegal.com/license/bsd-0-clause-license>

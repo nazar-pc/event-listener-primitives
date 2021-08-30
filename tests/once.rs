@@ -62,22 +62,72 @@ mod once {
 
     #[test]
     fn with_arguments() {
-        let bag = BagOnce::default();
-        let calls = Arc::new(AtomicUsize::new(0));
+        {
+            let bag = BagOnce::<Box<dyn FnOnce(&i32) + Send + 'static>, i32>::default();
+            let calls = Arc::new(AtomicUsize::new(0));
 
-        let handler_id = {
-            let calls = Arc::clone(&calls);
-            bag.add(move |_p| {
-                calls.fetch_add(1, Ordering::SeqCst);
-            })
-        };
+            {
+                let calls = Arc::clone(&calls);
+                bag.add(Box::new(move |_a1| {
+                    calls.fetch_add(1, Ordering::SeqCst);
+                }))
+                .detach();
+            };
 
-        bag.call(|handler| {
-            handler(1);
-        });
+            bag.call(|handler| {
+                handler(&1);
+            });
 
-        assert_eq!(calls.load(Ordering::SeqCst), 1);
+            assert_eq!(calls.load(Ordering::SeqCst), 1);
 
-        drop(handler_id);
+            {
+                let calls = Arc::clone(&calls);
+                bag.add(Box::new(move |_a1| {
+                    calls.fetch_add(1, Ordering::SeqCst);
+                }))
+                .detach();
+            };
+
+            bag.call_simple(&1);
+
+            assert_eq!(calls.load(Ordering::SeqCst), 2);
+        }
+        {
+            let bag = BagOnce::<
+                Box<dyn FnOnce(&i32, &i32, &i32, &i32, &i32) + Send + 'static>,
+                i32,
+                i32,
+                i32,
+                i32,
+                i32,
+            >::default();
+            let calls = Arc::new(AtomicUsize::new(0));
+
+            {
+                let calls = Arc::clone(&calls);
+                bag.add(Box::new(move |_a1, _a2, _a3, _a4, _a5| {
+                    calls.fetch_add(1, Ordering::SeqCst);
+                }))
+                .detach();
+            };
+
+            bag.call(|handler| {
+                handler(&1, &2, &3, &4, &5);
+            });
+
+            assert_eq!(calls.load(Ordering::SeqCst), 1);
+
+            {
+                let calls = Arc::clone(&calls);
+                bag.add(Box::new(move |_a1, _a2, _a3, _a4, _a5| {
+                    calls.fetch_add(1, Ordering::SeqCst);
+                }))
+                .detach();
+            };
+
+            bag.call_simple(&1, &2, &3, &4, &5);
+
+            assert_eq!(calls.load(Ordering::SeqCst), 2);
+        }
     }
 }
