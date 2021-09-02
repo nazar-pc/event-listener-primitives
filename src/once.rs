@@ -1,6 +1,6 @@
 use crate::HandlerId;
+use nohash_hasher::IntMap;
 use parking_lot::Mutex;
-use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::{fmt, mem};
@@ -14,7 +14,7 @@ mod private {
 }
 
 struct Inner<F: Send + 'static> {
-    handlers: HashMap<usize, F>,
+    handlers: IntMap<usize, F>,
     next_index: usize,
 }
 
@@ -82,7 +82,7 @@ where
     fn default() -> Self {
         Self {
             inner: Arc::new(Mutex::new(Inner {
-                handlers: HashMap::new(),
+                handlers: IntMap::default(),
                 next_index: 0,
             })),
             a1: PhantomData::default(),
