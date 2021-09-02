@@ -1,5 +1,10 @@
 # Changelog
 
+# 2.0.1
+
+* Handle an unlikely case of u64 overflow
+* Replace hash function with no-op hasher as we already have unique integers
+
 # 2.0.0
 
 * Removed extra internal boxing
