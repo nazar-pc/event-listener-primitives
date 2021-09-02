@@ -111,10 +111,15 @@ where
         {
             let mut inner = self.inner.lock();
 
-            index = inner.next_index;
-            inner.next_index += 1;
+            index = loop {
+                let index = inner.next_index;
+                inner.next_index += 1;
 
-            inner.handlers.insert(index, callback);
+                if !inner.handlers.contains_key(&index) {
+                    inner.handlers.insert(index, callback);
+                    break index;
+                }
+            }
         }
 
         HandlerId::new({
