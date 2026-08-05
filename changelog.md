@@ -1,5 +1,9 @@
 # Changelog
 
+# 2.0.2
+
+Fix clippy lints, update dependencies
+
 # 2.0.1
 
 * Handle an unlikely case of u64 overflow

@@ -11,7 +11,9 @@ mod private {
     // This struct is intentionally made `!Sized` with `[()]` such that we have no overlap with
     // `Sized` arguments in specialized versions of `call_simple` implementations below
     #[derive(Debug)]
-    pub struct Private([()]);
+    pub struct Private {
+        _private: [()],
+    }
 }
 
 struct Inner<F: Send + Sync + Clone + 'static> {
@@ -62,11 +64,11 @@ where
     fn clone(&self) -> Self {
         Self {
             inner: Arc::clone(&self.inner),
-            a1: PhantomData::default(),
-            a2: PhantomData::default(),
-            a3: PhantomData::default(),
-            a4: PhantomData::default(),
-            a5: PhantomData::default(),
+            a1: PhantomData,
+            a2: PhantomData,
+            a3: PhantomData,
+            a4: PhantomData,
+            a5: PhantomData,
         }
     }
 }
@@ -86,11 +88,11 @@ where
                 handlers: IntMap::default(),
                 next_index: 0,
             })),
-            a1: PhantomData::default(),
-            a2: PhantomData::default(),
-            a3: PhantomData::default(),
-            a4: PhantomData::default(),
-            a5: PhantomData::default(),
+            a1: PhantomData,
+            a2: PhantomData,
+            a3: PhantomData,
+            a4: PhantomData,
+            a5: PhantomData,
         }
     }
 }
@@ -115,8 +117,8 @@ where
                 let index = inner.next_index;
                 inner.next_index += 1;
 
-                if !inner.handlers.contains_key(&index) {
-                    inner.handlers.insert(index, callback);
+                if let std::collections::hash_map::Entry::Vacant(e) = inner.handlers.entry(index) {
+                    e.insert(callback);
                     break index;
                 }
             }
