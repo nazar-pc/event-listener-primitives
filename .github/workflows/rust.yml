@@ -1,0 +1,85 @@
+name: Rust
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: rust-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Not needed in CI, should make things a bit faster
+  CARGO_INCREMENTAL: 0
+  CARGO_TERM_COLOR: always
+  # Build smaller artifacts to avoid running out of space in CI and make it a bit faster
+  RUSTFLAGS: -C strip=symbols
+  RUST_BACKTRACE: full
+
+jobs:
+  cargo-fmt:
+    runs-on: ubuntu-26.04
+
+    steps:
+      - &checkout-step
+        name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # 7.0.1
+        with:
+          persist-credentials: 'false'
+
+      - name: cargo fmt
+        run: cargo fmt --all -- --check
+
+  cargo-clippy:
+    runs-on: ubuntu-26.04
+
+    steps:
+      - *checkout-step
+
+      - name: cargo clippy
+        run: cargo clippy --locked --all --all-targets -- -D warnings
+
+  cargo-test:
+    runs-on: ubuntu-26.04
+
+    steps:
+      - *checkout-step
+
+      - name: cargo test
+        run: cargo test --locked --all-targets
+
+      - name: cargo test --doc
+        run: cargo test --locked --doc
+
+  rustdoc:
+    runs-on: ubuntu-26.04
+    env:
+      RUSTDOCFLAGS: -D warnings -D rustdoc::broken-intra-doc-links -D rustdoc::private_intra_doc_links
+
+    steps:
+      - *checkout-step
+
+      - name: cargo doc
+        run: cargo doc --locked --all --no-deps --lib
+
+  rust-all:
+    # Hack for buggy GitHub Actions behavior with skipped checks: https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/collaborating-on-repositories-with-code-quality-features/troubleshooting-required-status-checks#handling-skipped-but-required-checks
+    if: ${{ always() }}
+    runs-on: ubuntu-slim
+    needs:
+      - cargo-clippy
+      - cargo-fmt
+      - cargo-test
+      - rustdoc
+
+    steps:
+      - name: Job status check
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          for result in $RESULTS; do
+            [[ "$result" == "success" ]] || exit 1
+          done

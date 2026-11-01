@@ -1,8 +1,8 @@
 mod regular {
     use event_listener_primitives::Bag;
     use parking_lot::Mutex;
-    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::thread;
 
     #[test]
