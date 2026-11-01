@@ -1,7 +1,7 @@
 mod once {
     use event_listener_primitives::BagOnce;
-    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::thread;
 
     #[test]
